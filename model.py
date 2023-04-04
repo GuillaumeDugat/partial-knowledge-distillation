@@ -3,6 +3,9 @@ from transformers import AutoTokenizer, GPT2LMHeadModel, GPT2Config
 
 def get_tokenizer():
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    # tokenizer does not have a padding token by default
+    # --> setting it to be the same as the end of sentence token
+    tokenizer.pad_token = tokenizer.eos_token_id
     return tokenizer
 
 

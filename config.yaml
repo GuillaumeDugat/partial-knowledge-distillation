@@ -1,11 +1,23 @@
 paths :
   data_folder : data
-  train_file: webtext.train.jsonl
-  valid_file: webtext.valid.jsonl
-  test_file: webtext.test.jsonl
+  train_file: webtext.train.toy.jsonl
+  valid_file: webtext.valid.toy.jsonl
+  test_file: webtext.test.toy.jsonl
+  token_dataset: token_dataset.json
+  checkpoints: checkpoints
 
 distilled_model:
   nb_layers: 6
 
 training_parameters:
   learning_rate: 0.001
+  nb_epochs : 10
+  batch_size : 10
+  checkpoints_name_last: checkpoint_last.pth
+  checkpoints_name_best: checkpoint_best.pth
+  resume: false
+  loss:
+    (): loss.DistillationLoss
+    alpha: 1
+    beta: 0.1
+    temperature: 1

@@ -2,8 +2,11 @@ import os
 import requests
 from tqdm import tqdm
 import torch
+import json
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+from transformers import DataCollatorForLanguageModeling
+from model import get_tokenizer
 
 
 def download_dataset():
@@ -38,7 +41,7 @@ def download_dataset():
                         pbar.update(chunk_size)
 
 
-def get_dataset(config):
+def get_text_dfs(config):
     train_path = os.path.join(
         config["paths"]["data_folder"], config["paths"]["train_file"]
     )
@@ -54,35 +57,115 @@ def get_dataset(config):
         or not os.path.exists(test_path)
     ):
         download_dataset()
+
+    train_df = pd.read_json(path_or_buf=train_path, lines=True)
+    valid_df = pd.read_json(path_or_buf=valid_path, lines=True)
+    test_df = pd.read_json(path_or_buf=test_path, lines=True)
+    return train_df, valid_df, test_df
+
+
+def get_tokens_dataset(config, tokenizer, max_length=768):
+    token_dataset_path = os.path.join(
+        config["paths"]["data_folder"], config["paths"]["token_dataset"]
+    )
+    if os.path.exists(token_dataset_path):
+        with open(token_dataset_path, "r") as f:
+            result = json.loads(f.read())
+        for train_test_val in result.keys():
+            for key, value in result[train_test_val].items():
+                result[train_test_val][key] = torch.tensor(value)
+
     else:
-        train_df = pd.read_json(path_or_buf=train_path, lines=True)
-        train_dataset = TextDataset(train_df)
-        valid_df = pd.read_json(path_or_buf=valid_path, lines=True)
-        valid_dataset = TextDataset(valid_df)
-        test_df = pd.read_json(path_or_buf=test_path, lines=True)
-        test_dataset = TextDataset(test_df)
-        return train_dataset, valid_dataset, test_dataset
+        train_df, valid_df, test_df = get_text_dfs(config)
+        names = ["train", "valid", "test"]
+        result = {}
+        for i, df in enumerate([train_df, valid_df, test_df]):
+            tokens = tokenizer(
+                df["text"].tolist(),
+                truncation=True,
+                max_length=max_length,
+                padding="max_length",
+                return_tensors="pt",
+            )
+            tokens = {**tokens}  # convert to dict
+            result[names[i]] = tokens
 
+        # convert tensors to list to save
+        savable_result = {}
+        for train_test_val in result.keys():
+            savable_result[train_test_val] = {}
+            for key, value in result[train_test_val].items():
+                savable_result[train_test_val][key] = value.tolist()
 
-def get_dataloaders(config):
-    train_dataset, valid_dataset, test_dataset = get_dataset(config)
+        with open(token_dataset_path, "w+") as f:
+            f.write(json.dumps(savable_result, indent=4))
+
     return (
-        DataLoader(train_dataset),
-        DataLoader(valid_dataset),
-        DataLoader(test_dataset),
+        TokensDataset(result["train"]),
+        TokensDataset(result["valid"]),
+        TokensDataset(result["test"]),
     )
 
 
+def get_dataloaders(config):
+    tokenizer = get_tokenizer()
+    train_dataset, valid_dataset, test_dataset = get_tokens_dataset(config, tokenizer)
+    dataloaders = [None, None, None]
+    data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
+
+    def collate_fn(batch):
+        batch = data_collator(batch)
+        batch_size = batch["input_ids"].shape[0]
+        x = {"input_ids": batch["input_ids"], "attention_mask": batch["attention_mask"]}
+        y = torch.zeros(size=(batch_size, tokenizer.vocab_size))
+        minus_100_indexes = (batch["labels"] == -100).nonzero()
+        for i in range(batch_size):
+            if i in minus_100_indexes[:, 0]:
+                last_100_for_i_row = (minus_100_indexes[:, 0] == i).nonzero(
+                    as_tuple=True
+                )[0][0]
+                last_100_for_i_column = minus_100_indexes[last_100_for_i_row][1]
+                label = batch["input_ids"][i][last_100_for_i_column - 1]
+            else:
+                label = batch["input_ids"][i][-1]
+            y[i][label] = 1
+
+        return x, y
+
+    for i, dataset in enumerate([train_dataset, valid_dataset, test_dataset]):
+        dataloaders[i] = DataLoader(
+            dataset,
+            batch_size=config["training_parameters"]["batch_size"],
+            collate_fn=collate_fn,
+            shuffle=True,
+        )
+    return dataloaders
+
+
+class TokensDataset(Dataset):
+    def __init__(self, token_dict) -> None:
+        self.input_ids = token_dict["input_ids"]
+        self.attention_mask = token_dict["attention_mask"]
+
+    def __len__(self):
+        return len(self.input_ids)
+
+    def __getitem__(self, idx):
+        return {
+            "input_ids": self.input_ids[idx],
+            "attention_mask": self.attention_mask[idx],
+        }
+
+
 class TextDataset(Dataset):
-    def __init__(self, df, text_column="text") -> None:
+    def __init__(self, df) -> None:
         self.df = df
-        self.text_column = text_column
 
     def __len__(self):
         return len(self.df.index)
 
     def __getitem__(self, idx):
-        return self.df.loc[idx][self.text_column]
+        return self.df["text"].iloc[idx]
 
 
 if __name__ == "__main__":
