@@ -1,12 +1,29 @@
-from transformers import AutoTokenizer, TFAutoModelForCausalLM
-import torch
+from transformers import AutoTokenizer, GPT2LMHeadModel, GPT2Config
 
-# with transformers
-tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
-model = TFAutoModelForCausalLM.from_pretrained(
-    "distilgpt2", pad_token_id=tokenizer.eos_token_id
-)
+def get_tokenizer(): 
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-# with torch
-model = torch.hub.load('huggingface/transformers', 'modelForCausalLM', 'gpt2') 
-model = torch.hub.load('huggingface/transformers', 'modelForCausalLM', 'distilgpt2') 
+def get_pretrained_gpt2():
+    model = GPT2LMHeadModel.from_pretrained("gpt2")
+    return model
+
+
+def get_pretrained_distilgpt2():
+    model = GPT2LMHeadModel.from_pretrained("distilgpt2")
+    return model
+
+def get_untrained_distilgpt2():
+    config = GPT2Config.from_pretrained("gpt2")
+    config.n_layer = 6
+    model = GPT2LMHeadModel(config)
+    return model
+
+
+
+if __name__ == "__main__" : 
+    tokenizer = get_tokenizer()
+    model = get_pretrained_distilgpt2()
+    inputs = tokenizer("Hi, this is a test sentence", return_tensors="pt")
+    outputs = model(**inputs, labels=inputs["input_ids"])
+    print("loss", outputs.loss)
+    print("logits", outputs.logits)
