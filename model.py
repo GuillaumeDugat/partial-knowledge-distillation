@@ -1,7 +1,10 @@
 from transformers import AutoTokenizer, GPT2LMHeadModel, GPT2Config
 
-def get_tokenizer(): 
+
+def get_tokenizer():
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    return tokenizer
+
 
 def get_pretrained_gpt2():
     model = GPT2LMHeadModel.from_pretrained("gpt2")
@@ -12,15 +15,15 @@ def get_pretrained_distilgpt2():
     model = GPT2LMHeadModel.from_pretrained("distilgpt2")
     return model
 
-def get_untrained_distilgpt2():
+
+def get_untrained_distilgpt2(config):
     config = GPT2Config.from_pretrained("gpt2")
-    config.n_layer = 6
+    config.n_layer = config["distilled_model"]["nb_layers"]
     model = GPT2LMHeadModel(config)
     return model
 
 
-
-if __name__ == "__main__" : 
+if __name__ == "__main__":
     tokenizer = get_tokenizer()
     model = get_pretrained_distilgpt2()
     inputs = tokenizer("Hi, this is a test sentence", return_tensors="pt")
