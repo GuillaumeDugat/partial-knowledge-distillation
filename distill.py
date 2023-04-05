@@ -14,7 +14,6 @@ def distill(config):
     else:
         device = torch.device("cpu")
 
-    tokenizer = get_tokenizer()
     teacher_model = get_pretrained_gpt2()
     teacher_model.to(device)
 
@@ -36,7 +35,7 @@ def distill(config):
         epoch_start = checkpoint_last["epoch"]
         val_loss_best = checkpoint_best["val_loss"]
     else:
-        student_model = get_untrained_distilgpt2()
+        student_model = get_untrained_distilgpt2(config)
         optimizer = torch.optim.SGD(
             student_model.parameters(),
             lr=config["training_parameters"]["learning_rate"],
@@ -51,7 +50,7 @@ def distill(config):
     criterion = config["training_parameters"]["loss"]
     criterion = criterion.to(device)
 
-    for epoch in range(epoch_start, config["training_parameters"]["n_epochs"]):
+    for epoch in range(epoch_start, config["training_parameters"]["nb_epochs"]):
         train_loss = train_one_epoch(
             teacher_model, student_model, train_loader, optimizer, criterion
         )
@@ -118,3 +117,11 @@ def evaluate(teacher_model, student_model, loader, loss_fn):
         loss_it.append(loss.item())
 
     return sum(loss_it) / len(loss_it)
+
+
+if __name__ == "__main__":
+    import configue
+
+    config = configue.load("config.yaml")
+
+    distill(config)
