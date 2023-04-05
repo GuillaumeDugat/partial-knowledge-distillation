@@ -113,23 +113,46 @@ def get_dataloaders(config):
     dataloaders = [None, None, None]
     data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
-    def collate_fn(batch):
-        batch = data_collator(batch)
-        batch_size = batch["input_ids"].shape[0]
-        x = {"input_ids": batch["input_ids"], "attention_mask": batch["attention_mask"]}
-        y = torch.zeros(size=(batch_size, tokenizer.vocab_size))
-        minus_100_indexes = (batch["labels"] == -100).nonzero()
-        for i in range(batch_size):
-            if i in minus_100_indexes[:, 0]:
-                last_100_for_i_row = (minus_100_indexes[:, 0] == i).nonzero(
-                    as_tuple=True
-                )[0][0]
-                last_100_for_i_column = minus_100_indexes[last_100_for_i_row][1]
-                label = batch["input_ids"][i][last_100_for_i_column - 1]
-            else:
-                label = batch["input_ids"][i][-1]
-            y[i][label] = 1
+    def collate_fn(batch: list[dict[str, torch.tensor]]):
+        # concatenate input ids and attention mask along batch axis
+        batch: dict[str, torch.tensor] = data_collator(batch)
 
+        # retrieve useful stuff
+        attention_mask = batch["attention_mask"]
+        input_ids = batch["input_ids"]
+        batch_size = input_ids.shape[0]
+        batch_arange = torch.arange(end=batch_size)
+
+        # given all the ones are located at the beginning of the row, summing per row gives us
+        # the index of the last 1 in the attention mask (= index of last word in sentence)
+        nb_ones_per_row = attention_mask.sum(dim=1)
+
+        # we chose at random one word the model will have to predict (between first and last word)
+        # could be better if issue solved : https://github.com/pytorch/pytorch/issues/89438
+        index_words_to_predict = torch.concatenate(
+            [torch.randint(high=high, size=(1,)) for high in nb_ones_per_row]
+        )
+
+        # all the words situated after the word chosen at random get their attention mask set to 0
+        set_to_0 = torch.tensor(
+            sum(
+                [
+                    [
+                        [j, i]
+                        for i in range(index_words_to_predict[j], nb_ones_per_row[j])
+                    ]
+                    for j in range(batch_size)
+                ],
+                [],
+            )
+        )
+        attention_mask[set_to_0[:, 0], set_to_0[:, 1]] = 0
+
+        # we retrieve the tokens of the chosen words and create one hot encoded versions of the
+        words_ids = input_ids[batch_arange, index_words_to_predict]
+        y = torch.nn.functional.one_hot(words_ids, num_classes=50256)
+
+        x = {"input_ids": input_ids, "attention_mask": attention_mask}
         return x, y
 
     for i, dataset in enumerate([train_dataset, valid_dataset, test_dataset]):
@@ -173,6 +196,6 @@ if __name__ == "__main__":
 
     config = configue.load("config.yaml")
     train, valid, test = get_dataloaders(config)
-    for list_text in train:
-        print(list_text)
+    for x, y in train:
+        print(x, y)
         break
