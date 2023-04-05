@@ -20,9 +20,9 @@ def get_pretrained_distilgpt2():
 
 
 def get_untrained_distilgpt2(config):
-    config = GPT2Config.from_pretrained("gpt2")
-    config.n_layer = config["distilled_model"]["nb_layers"]
-    model = GPT2LMHeadModel(config)
+    gpt2_config = GPT2Config.from_pretrained("gpt2")
+    gpt2_config.n_layer = config["distilled_model"]["nb_layers"]
+    model = GPT2LMHeadModel(gpt2_config)
     return model
 
 
