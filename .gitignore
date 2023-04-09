@@ -133,3 +133,4 @@ dmypy.json
 
 # Folders
 data
+checkpoints

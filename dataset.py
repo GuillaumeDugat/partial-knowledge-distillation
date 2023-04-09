@@ -150,7 +150,7 @@ def get_dataloaders(config):
 
         # we retrieve the tokens of the chosen words and create one hot encoded versions of the
         words_ids = input_ids[batch_arange, index_words_to_predict]
-        y = torch.nn.functional.one_hot(words_ids, num_classes=50256)
+        y = torch.nn.functional.one_hot(words_ids, num_classes=tokenizer.vocab_size)
 
         x = {"input_ids": input_ids, "attention_mask": attention_mask}
         return x, y

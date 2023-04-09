@@ -17,5 +17,5 @@ class DistillationLoss(torch.nn.Module):
             soft_output_teacher,
         )
         first_objective *= self.temperature**2
-        second_objective = F.cross_entropy(output_student, target)
+        second_objective = F.cross_entropy(output_student.logits, target)
         return first_objective * self.alpha + second_objective * self.beta

@@ -12,7 +12,7 @@ distilled_model:
 training_parameters:
   learning_rate: 0.001
   nb_epochs : 10
-  batch_size : 10
+  batch_size : 2
   checkpoints_name_last: checkpoint_last.pth
   checkpoints_name_best: checkpoint_best.pth
   resume: false

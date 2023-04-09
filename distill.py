@@ -54,7 +54,7 @@ def distill(config):
         train_loss = train_one_epoch(
             teacher_model, student_model, train_loader, optimizer, criterion
         )
-        val_loss = evaluate(teacher_model, student_model, valid_loader)
+        val_loss = evaluate(teacher_model, student_model, valid_loader, criterion)
         print(
             f"epoch: {epoch} training loss: {train_loss:.3f} validation loss: {val_loss:.3f}"
         )
@@ -90,7 +90,6 @@ def train_one_epoch(teacher_model, student_model, train_loader, optimizer, loss_
     for batch_idx, (input, target) in enumerate(train_loader):
         # take a batch
         output_teacher = teacher_model(**input)
-        output_teacher.detach()
         # forward pass
         output_student = student_model(**input)
         loss = loss_fn(output_student, output_teacher, target)
