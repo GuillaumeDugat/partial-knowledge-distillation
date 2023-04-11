@@ -155,6 +155,8 @@ def get_dataloaders(config):
         x = {"input_ids": input_ids, "attention_mask": attention_mask}
         return x, y
 
+    remove_tokenizer_warning()
+
     for i, dataset in enumerate([train_dataset, valid_dataset, test_dataset]):
         dataloaders[i] = DataLoader(
             dataset,
@@ -163,6 +165,12 @@ def get_dataloaders(config):
             shuffle=True,
         )
     return dataloaders
+
+
+def remove_tokenizer_warning():
+    # Useless warning when using tokenizer and data collator
+    # https://github.com/huggingface/transformers/issues/19471
+    os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "true"
 
 
 class TokensDataset(Dataset):
