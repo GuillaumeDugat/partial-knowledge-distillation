@@ -1,5 +1,6 @@
 import os
 import requests
+from typing import List, Dict
 from tqdm import tqdm
 import torch
 import json
@@ -7,61 +8,21 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from transformers import DataCollatorForLanguageModeling
 from model import get_tokenizer
-
-
-def download_dataset():
-    subdir = "data"
-    if not os.path.exists(subdir):
-        os.makedirs(subdir)
-    subdir = subdir.replace("\\", "/")  # needed for Windows
-
-    for ds in [
-        "webtext",
-    ]:
-        for split in ["train", "valid", "test"]:
-            filename = ds + "." + split + ".jsonl"
-            r = requests.get(
-                "https://openaipublic.azureedge.net/gpt-2/output-dataset/v1/"
-                + filename,
-                stream=True,
-            )
-
-            with open(os.path.join(subdir, filename), "wb") as f:
-                file_size = int(r.headers["content-length"])
-                chunk_size = 1000
-                with tqdm(
-                    ncols=100,
-                    desc="Fetching " + filename,
-                    total=file_size,
-                    unit_scale=True,
-                ) as pbar:
-                    # 1k for chunk_size, since Ethernet packet size is around 1500 bytes
-                    for chunk in r.iter_content(chunk_size=chunk_size):
-                        f.write(chunk)
-                        pbar.update(chunk_size)
+from datasets import load_dataset
+from sklearn.model_selection import train_test_split
 
 
 def get_text_dfs(config):
-    train_path = os.path.join(
-        config["paths"]["data_folder"], config["paths"]["train_file"]
+    dataset = load_dataset("vicgalle/alpaca-gpt4")
+    dataset = pd.DataFrame(dataset["train"])  # There is only train
+    X_train, X_test = train_test_split(
+        dataset, test_size=0.2, shuffle=True, random_state=config["seed"]
     )
-    valid_path = os.path.join(
-        config["paths"]["data_folder"], config["paths"]["valid_file"]
+    X_train, X_val = train_test_split(
+        X_train.copy(), test_size=0.25, random_state=config["seed"]
     )
-    test_path = os.path.join(
-        config["paths"]["data_folder"], config["paths"]["test_file"]
-    )
-    if (
-        not os.path.exists(train_path)
-        or not os.path.exists(valid_path)
-        or not os.path.exists(test_path)
-    ):
-        download_dataset()
 
-    train_df = pd.read_json(path_or_buf=train_path, lines=True)
-    valid_df = pd.read_json(path_or_buf=valid_path, lines=True)
-    test_df = pd.read_json(path_or_buf=test_path, lines=True)
-    return train_df, valid_df, test_df
+    return X_train, X_val, X_test
 
 
 def get_tokens_dataset(config, tokenizer, max_length=768):
@@ -113,7 +74,7 @@ def get_dataloaders(config):
     dataloaders = [None, None, None]
     data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
-    def collate_fn(batch: list[dict[str, torch.tensor]]):
+    def collate_fn(batch: List[Dict[str, torch.tensor]]):
         # concatenate input ids and attention mask along batch axis
         batch: dict[str, torch.tensor] = data_collator(batch)
 

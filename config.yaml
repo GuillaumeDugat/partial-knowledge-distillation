@@ -1,8 +1,5 @@
 paths :
   data_folder : data
-  train_file: webtext.train.jsonl
-  valid_file: webtext.valid.jsonl
-  test_file: webtext.test.jsonl
   token_dataset: token_dataset.json
   checkpoints: checkpoints
 
@@ -21,3 +18,5 @@ training_parameters:
     alpha: 1
     beta: 0.1
     temperature: 1
+
+seed: 42
