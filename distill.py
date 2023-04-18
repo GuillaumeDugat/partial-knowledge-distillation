@@ -1,9 +1,9 @@
 import os
 import torch
+from tqdm import tqdm
 from model import (
     get_pretrained_gpt2,
     get_untrained_distilgpt2,
-    get_tokenizer,
 )
 from dataset import get_dataloaders
 
@@ -51,12 +51,15 @@ def distill(config):
     criterion = criterion.to(device)
 
     for epoch in range(epoch_start, config["training_parameters"]["nb_epochs"]):
+        print(
+            f"""#########   Epoch {epoch + 1}/{config["training_parameters"]["nb_epochs"]}   #########"""
+        )
         train_loss = train_one_epoch(
-            teacher_model, student_model, train_loader, optimizer, criterion
+            teacher_model, student_model, train_loader, optimizer, criterion, device
         )
         val_loss = evaluate(teacher_model, student_model, valid_loader, criterion)
         print(
-            f"epoch: {epoch} training loss: {train_loss:.3f} validation loss: {val_loss:.3f}"
+            f"epoch: {epoch} training loss: {train_loss:.3f} validation loss: {val_loss:.3f}\n"
         )
         # Save model
         checkpoint = {
@@ -83,12 +86,20 @@ def distill(config):
             )
 
 
-def train_one_epoch(teacher_model, student_model, train_loader, optimizer, loss_fn):
+def train_one_epoch(
+    teacher_model, student_model, train_loader, optimizer, loss_fn, device
+):
     loss_it = list()
     student_model.train()  # switch to train mode
 
-    for batch_idx, (input, target) in enumerate(train_loader):
+    print("Training :")
+    for batch_idx, (input, target) in tqdm(
+        enumerate(train_loader), total=len(train_loader)
+    ):
         # take a batch
+        for key in input:
+            input[key] = input[key].to(device)
+        target = target.to(device)
         output_teacher = teacher_model(**input)
         # forward pass
         output_student = student_model(**input)
@@ -107,7 +118,8 @@ def evaluate(teacher_model, student_model, loader, loss_fn):
     loss_it = list()
     student_model.eval()  # switch to train mode
 
-    for batch_idx, (input, target) in enumerate(loader):
+    print("Evaluation :")
+    for batch_idx, (input, target) in tqdm(enumerate(loader), total=len(loader)):
         # forward pass
         with torch.no_grad():
             output_teacher = teacher_model(**input)
