@@ -81,37 +81,13 @@ def get_dataloaders(config):
         # retrieve useful stuff
         attention_mask = batch["attention_mask"]
         input_ids = batch["input_ids"]
-        batch_size = input_ids.shape[0]
-        batch_arange = torch.arange(end=batch_size)
 
-        # given all the ones are located at the beginning of the row, summing per row gives us
-        # the index of the last 1 in the attention mask (= index of last word in sentence)
-        nb_ones_per_row = attention_mask.sum(dim=1)
+        # we create one hot encoded versions of the input to get our target
+        y = torch.nn.functional.one_hot(input_ids, num_classes=tokenizer.vocab_size)
+        y = y.double()
 
-        # we chose at random one word the model will have to predict (between first and last word)
-        # could be better if issue solved : https://github.com/pytorch/pytorch/issues/89438
-        index_words_to_predict = torch.concatenate(
-            [torch.randint(high=high, size=(1,)) for high in nb_ones_per_row]
-        )
-
-        # all the words situated after the word chosen at random get their attention mask set to 0
-        set_to_0 = torch.tensor(
-            sum(
-                [
-                    [
-                        [j, i]
-                        for i in range(index_words_to_predict[j], nb_ones_per_row[j])
-                    ]
-                    for j in range(batch_size)
-                ],
-                [],
-            )
-        )
-        attention_mask[set_to_0[:, 0], set_to_0[:, 1]] = 0
-
-        # we retrieve the tokens of the chosen words and create one hot encoded versions of the
-        words_ids = input_ids[batch_arange, index_words_to_predict]
-        y = torch.nn.functional.one_hot(words_ids, num_classes=tokenizer.vocab_size)
+        # remove the first word, as it's never going to be predicted
+        y = y[:, 1:]
 
         x = {"input_ids": input_ids, "attention_mask": attention_mask}
         return x, y
