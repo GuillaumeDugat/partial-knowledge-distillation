@@ -57,7 +57,9 @@ def distill(config):
         train_loss = train_one_epoch(
             teacher_model, student_model, train_loader, optimizer, criterion, device
         )
-        val_loss = evaluate(teacher_model, student_model, valid_loader, criterion)
+        val_loss = evaluate(
+            teacher_model, student_model, valid_loader, criterion, device
+        )
         print(
             f"epoch: {epoch} training loss: {train_loss:.3f} validation loss: {val_loss:.3f}\n"
         )
@@ -114,12 +116,16 @@ def train_one_epoch(
     return sum(loss_it) / len(loss_it)
 
 
-def evaluate(teacher_model, student_model, loader, loss_fn):
+def evaluate(teacher_model, student_model, loader, loss_fn, device):
     loss_it = list()
     student_model.eval()  # switch to train mode
 
     print("Evaluation :")
     for batch_idx, (input, target) in tqdm(enumerate(loader), total=len(loader)):
+        # take a batch
+        for key in input:
+            input[key] = input[key].to(device)
+        target = target.to(device)
         # forward pass
         with torch.no_grad():
             output_teacher = teacher_model(**input)
