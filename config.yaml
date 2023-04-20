@@ -13,10 +13,12 @@ training_parameters:
   checkpoints_name_last: checkpoint_last.pth
   checkpoints_name_best: checkpoint_best.pth
   resume: false
+  # loss:
+  #   (): loss.DistillationLoss
+  #   alpha: 1
+  #   beta: 0.1
+  #   temperature: 1
   loss:
-    (): loss.DistillationLoss
-    alpha: 1
-    beta: 0.1
-    temperature: 1
+    (): loss.ClassicLoss
 
 seed: 42

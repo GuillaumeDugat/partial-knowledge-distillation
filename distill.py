@@ -6,6 +6,7 @@ from model import (
     get_untrained_distilgpt2,
 )
 from dataset import get_dataloaders
+from loss import DistillationLoss
 
 
 def distill(config):
@@ -14,8 +15,14 @@ def distill(config):
     else:
         device = torch.device("cpu")
 
-    teacher_model = get_pretrained_gpt2()
-    teacher_model.to(device)
+    criterion = config["training_parameters"]["loss"]
+    criterion = criterion.to(device)
+
+    if isinstance(criterion, DistillationLoss):
+        teacher_model = get_pretrained_gpt2()
+        teacher_model.to(device)
+    else:
+        teacher_model = None  # makes sure teacher model is not called in this mode
 
     if config["training_parameters"]["resume"]:
         checkpoint_last = torch.load(
@@ -46,9 +53,6 @@ def distill(config):
     student_model.to(device)
 
     train_loader, valid_loader, test_loader = get_dataloaders(config)
-
-    criterion = config["training_parameters"]["loss"]
-    criterion = criterion.to(device)
 
     for epoch in range(epoch_start, config["training_parameters"]["nb_epochs"]):
         print(
@@ -102,16 +106,25 @@ def train_one_epoch(
         for key in input:
             input[key] = input[key].to(device)
         target = target.to(device)
-        output_teacher = teacher_model(**input)
         # forward pass
         output_student = student_model(**input)
-        loss = loss_fn(output_student, output_teacher, target)
+        if isinstance(loss_fn, DistillationLoss):
+            output_teacher = teacher_model(**input)
+            loss = loss_fn(output_student, output_teacher, target)
+        else:
+            loss = loss_fn(output_student, target)
+
         loss_it.append(loss.item())
         # backward pass
         optimizer.zero_grad()
         loss.backward()
         # update weights
         optimizer.step()
+
+        if batch_idx % 1000 == 0:
+            print(
+                f"Evaluate [{batch_idx}/{len(train_loader)}]\t{sum(loss_it) / len(loss_it)}"
+            )
 
     return sum(loss_it) / len(loss_it)
 
@@ -128,10 +141,19 @@ def evaluate(teacher_model, student_model, loader, loss_fn, device):
         target = target.to(device)
         # forward pass
         with torch.no_grad():
-            output_teacher = teacher_model(**input)
             output_student = student_model(**input)
-            loss = loss_fn(output_student, output_teacher, target)
+            if isinstance(loss_fn, DistillationLoss):
+                output_teacher = teacher_model(**input)
+                loss = loss_fn(output_student, output_teacher, target)
+            else:
+                loss = loss_fn(output_student, target)
+
         loss_it.append(loss.item())
+
+        if batch_idx % 500 == 0:
+            print(
+                f"Evaluate [{batch_idx}/{len(loader)}]\t{sum(loss_it) / len(loss_it)}"
+            )
 
     return sum(loss_it) / len(loss_it)
 

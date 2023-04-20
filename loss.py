@@ -20,3 +20,11 @@ class DistillationLoss(torch.nn.Module):
         # remove last predicted word from logit as we have no ground truth for it
         second_objective = F.cross_entropy(output_student.logits[:, :-1], target)
         return first_objective * self.alpha + second_objective * self.beta
+
+
+class ClassicLoss(torch.nn.Module):
+    def __init__(self):
+        super(ClassicLoss, self).__init__()
+
+    def forward(self, output_student, target):
+        return F.cross_entropy(output_student.logits[:, :-1], target)
