@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, GPT2LMHeadModel, GPT2Config
 
 
 def get_tokenizer():
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    tokenizer = AutoTokenizer.from_pretrained("vicgalle/gpt2-alpaca-gpt4")
     # tokenizer does not have a padding token by default
     # --> setting it to be the same as the end of sentence token
     tokenizer.pad_token = tokenizer.eos_token_id
@@ -10,7 +10,7 @@ def get_tokenizer():
 
 
 def get_pretrained_gpt2():
-    model = GPT2LMHeadModel.from_pretrained("gpt2")
+    model = GPT2LMHeadModel.from_pretrained("vicgalle/gpt2-alpaca-gpt4")
     return model
 
 

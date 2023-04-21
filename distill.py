@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 from model import (
     get_pretrained_gpt2,
-    get_untrained_distilgpt2,
+    get_pretrained_distilgpt2,
 )
 from dataset import get_dataloaders
 from loss import DistillationLoss
@@ -42,7 +42,7 @@ def distill(config):
         epoch_start = checkpoint_last["epoch"]
         val_loss_best = checkpoint_best["val_loss"]
     else:
-        student_model = get_untrained_distilgpt2(config)
+        student_model = get_pretrained_distilgpt2()
         optimizer = torch.optim.SGD(
             student_model.parameters(),
             lr=config["training_parameters"]["learning_rate"],

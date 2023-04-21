@@ -25,7 +25,7 @@ def get_text_dfs(config):
     return X_train, X_val, X_test
 
 
-def get_tokens_dataset(config, tokenizer, max_length=768):
+def get_tokens_dataset(config, tokenizer, max_length=1024):
     token_dataset_path = os.path.join(
         config["paths"]["data_folder"], config["paths"]["token_dataset"]
     )
