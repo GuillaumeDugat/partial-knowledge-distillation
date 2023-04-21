@@ -58,14 +58,14 @@ def distill(config):
         print(
             f"""#########   Epoch {epoch + 1}/{config["training_parameters"]["nb_epochs"]}   #########"""
         )
-        train_loss = train_one_epoch(
+        train_loss, train_first_objective, train_second_objective = train_one_epoch(
             teacher_model, student_model, train_loader, optimizer, criterion, device
         )
-        val_loss = evaluate(
+        val_loss, val_first_objective, val_second_objective = evaluate(
             teacher_model, student_model, valid_loader, criterion, device
         )
         print(
-            f"epoch: {epoch} training loss: {train_loss} validation loss: {val_loss}\n"
+            f"epoch: {epoch} training loss: {train_loss}\t{train_first_objective}\t{train_second_objective} | validation loss: {val_loss}\t{val_first_objective}\t{val_second_objective}\n"
         )
         # Save model
         checkpoint = {
@@ -96,6 +96,8 @@ def train_one_epoch(
     teacher_model, student_model, train_loader, optimizer, loss_fn, device
 ):
     loss_it = list()
+    loss_first = list()
+    loss_second = list()
     student_model.train()  # switch to train mode
 
     print("Training :")
@@ -111,6 +113,9 @@ def train_one_epoch(
         if isinstance(loss_fn, DistillationLoss):
             output_teacher = teacher_model(**input)
             loss = loss_fn(output_student, output_teacher, target)
+
+            loss_first.append(loss_fn.first_objective.item())
+            loss_second.append(loss_fn.second_objective.item())
         else:
             loss = loss_fn(output_student, target)
 
@@ -121,17 +126,35 @@ def train_one_epoch(
         # update weights
         optimizer.step()
 
-        if batch_idx % 1000 == 0:
+        if batch_idx % 500 == 0:
             print(
-                f"Train [{batch_idx}/{len(train_loader)}]\t{sum(loss_it) / len(loss_it)}"
+                f"Train [{batch_idx}/{len(train_loader)}]\t{get_avg(loss_it)} \t {get_avg(loss_first)} \t {get_avg(loss_second)}"
             )
+        break
 
-    return sum(loss_it) / len(loss_it)
+    print(
+        f"Train [{batch_idx}/{len(train_loader)}]\t{get_avg(loss_it)} \t {get_avg(loss_first)} \t {get_avg(loss_second)}"
+    )
+
+    return (
+        get_avg(loss_it),
+        get_avg(loss_first),
+        get_avg(loss_second),
+    )
+
+
+def get_avg(loss_list):
+    if len(loss_list) == 0:
+        return 0
+    else:
+        return sum(loss_list) / len(loss_list)
 
 
 def evaluate(teacher_model, student_model, loader, loss_fn, device):
     loss_it = list()
-    student_model.eval()  # switch to train mode
+    loss_first = list()
+    loss_second = list()
+    student_model.eval()  # switch to eval mode
 
     print("Evaluation :")
     for batch_idx, (input, target) in tqdm(enumerate(loader), total=len(loader)):
@@ -145,6 +168,9 @@ def evaluate(teacher_model, student_model, loader, loss_fn, device):
             if isinstance(loss_fn, DistillationLoss):
                 output_teacher = teacher_model(**input)
                 loss = loss_fn(output_student, output_teacher, target)
+
+                loss_first.append(loss_fn.first_objective.item())
+                loss_second.append(loss_fn.second_objective.item())
             else:
                 loss = loss_fn(output_student, target)
 
@@ -152,10 +178,19 @@ def evaluate(teacher_model, student_model, loader, loss_fn, device):
 
         if batch_idx % 500 == 0:
             print(
-                f"Evaluate [{batch_idx}/{len(loader)}]\t{sum(loss_it) / len(loss_it)}"
+                f"Evaluate [{batch_idx}/{len(loader)}]\t{get_avg(loss_it)} \t {get_avg(loss_first)} \t {get_avg(loss_second)}"
             )
+        break
 
-    return sum(loss_it) / len(loss_it)
+    print(
+        f"Evaluate [{batch_idx}/{len(loader)}]\t{get_avg(loss_it)} \t {get_avg(loss_first)} \t {get_avg(loss_second)}"
+    )
+
+    return (
+        get_avg(loss_it),
+        get_avg(loss_first),
+        get_avg(loss_second),
+    )
 
 
 if __name__ == "__main__":
