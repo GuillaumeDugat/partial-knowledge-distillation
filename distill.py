@@ -130,7 +130,6 @@ def train_one_epoch(
             print(
                 f"Train [{batch_idx}/{len(train_loader)}]\t{get_avg(loss_it)} \t {get_avg(loss_first)} \t {get_avg(loss_second)}"
             )
-        break
 
     print(
         f"Train [{batch_idx}/{len(train_loader)}]\t{get_avg(loss_it)} \t {get_avg(loss_first)} \t {get_avg(loss_second)}"
@@ -180,7 +179,6 @@ def evaluate(teacher_model, student_model, loader, loss_fn, device):
             print(
                 f"Evaluate [{batch_idx}/{len(loader)}]\t{get_avg(loss_it)} \t {get_avg(loss_first)} \t {get_avg(loss_second)}"
             )
-        break
 
     print(
         f"Evaluate [{batch_idx}/{len(loader)}]\t{get_avg(loss_it)} \t {get_avg(loss_first)} \t {get_avg(loss_second)}"
