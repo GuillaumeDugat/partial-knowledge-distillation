@@ -65,7 +65,7 @@ def distill(config):
             teacher_model, student_model, valid_loader, criterion, device
         )
         print(
-            f"epoch: {epoch} training loss: {train_loss:.3f} validation loss: {val_loss:.3f}\n"
+            f"epoch: {epoch} training loss: {train_loss} validation loss: {val_loss}\n"
         )
         # Save model
         checkpoint = {
@@ -123,7 +123,7 @@ def train_one_epoch(
 
         if batch_idx % 1000 == 0:
             print(
-                f"Evaluate [{batch_idx}/{len(train_loader)}]\t{sum(loss_it) / len(loss_it)}"
+                f"Train [{batch_idx}/{len(train_loader)}]\t{sum(loss_it) / len(loss_it)}"
             )
 
     return sum(loss_it) / len(loss_it)
