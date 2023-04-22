@@ -34,7 +34,7 @@ pip install -r requirements.txt
 
 ## :ferris_wheel: Usage
 
-After modifying the `config.yaml` file (details below), you wan launch the training with : 
+After modifying the `config.yaml` file (details below), you can launch the training with : 
 ```
 python3 distill.py
 ```
