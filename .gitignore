@@ -134,3 +134,8 @@ dmypy.json
 # Folders
 data
 checkpoints
+
+# Results files
+*.out
+*.err
+*.pth
